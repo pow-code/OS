@@ -22,16 +22,26 @@ typedef struct {
     Task *head;
     Task *tail;
     pthread_mutex_t lock;
+    pthread_cond_t cond_empty;
+    pthread_cond_t cond_exit;
+    int cnt_active_threads;
 } TaskQueue;
 
-void init_task_queue(TaskQueue *queue) {
+void init_task_queue(TaskQueue *queue, int NUM_THREADS) {
   	int err;
+
+    queue->cnt_active_threads = NUM_THREADS;
 
     queue->head = NULL;
     queue->tail = NULL;
     err = pthread_mutex_init(&queue->lock, NULL);
     if (err != EXIT_SUCCESS) {
       	fprintf(stderr, "pthread_mutex_init failed: %s\n", strerror(err));
+    }
+
+    err = pthread_cond_init(&queue->cond_empty, NULL);
+    if (err != EXIT_SUCCESS) {
+        fprintf(stderr, "pthread_cond_init failed: %s\n", strerror(err));
     }
 
 }
@@ -56,19 +66,47 @@ void push_task(TaskQueue *queue, const char *src_path, const char *dst_path) {
         queue->head = queue->tail = new_task;
     }
 
+    err = pthread_cond_signal(&queue->cond_empty);
+    if (err != EXIT_SUCCESS) {
+      fprintf(stderr, "pthread_cond_signal failed: %s\n", strerror(err));
+    }
     err = pthread_mutex_unlock(&queue->lock);
     if (err != EXIT_SUCCESS) {
       	fprintf(stderr, "pthread_mutex_lock failed: %s\n", strerror(err));
     }
 }
 
-Task *pop_task(TaskQueue *queue) {
+Task *pop_task(TaskQueue *queue, int NUM_THREADS) {
   	int err;
 
     err = pthread_mutex_lock(&queue->lock);
 	if (err != EXIT_SUCCESS) {
           fprintf(stderr, "pthread_mutex_lock failed: %s\n", strerror(err));
 	}
+
+    while (queue->head == NULL) {
+        queue->cnt_active_threads--;
+
+        if (queue->cnt_active_threads == 0) {
+            err = pthread_cond_signal(&queue->cond_empty);
+            if (err != EXIT_SUCCESS) {
+                fprintf(stderr, "pthread_cond_signal failed: %s\n", strerror(err));
+            }
+            err = pthread_mutex_unlock(&queue->lock);
+            if (err != EXIT_SUCCESS) {
+                fprintf(stderr, "pthread_mutex_lock failed: %s\n", strerror(err));
+            }
+            return NULL;
+        }
+        else {
+            err = pthread_cond_wait(&queue->cond_empty, &queue->lock);
+            if (err != EXIT_SUCCESS) {
+              fprintf(stderr, "pthread_cond_wait failed: %s\n", strerror(err));
+            }
+        }
+
+        queue->cnt_active_threads++;
+    }
 
     Task *task = queue->head;
     queue->head = task->next;
@@ -83,6 +121,15 @@ Task *pop_task(TaskQueue *queue) {
     return task;
 }
 
+void destroy_task_queue(TaskQueue *queue) {
+    pthread_mutex_destroy(&queue->lock);
+    pthread_cond_destroy(&queue->cond_empty);
+}
+
 void free_task(Task *task) {
     free(task);
 }
+
+
+
+
