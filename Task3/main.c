@@ -195,8 +195,6 @@ void *copy_dir(void *arg) {
         }
         free_task(task);
     }
-
-    printf("<SUCCESS>\n");
     pthread_exit(NULL);
 }
 
