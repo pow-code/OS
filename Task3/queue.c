@@ -9,8 +9,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-#define BUFFER_SIZE 4096
-#define PATH_MAX 4096
+#include "queue.h"
 
 typedef struct Task {
     char src_path[PATH_MAX];
