@@ -130,11 +130,24 @@ void *copy_dir(void *arg) {
                 }
 
                 if (dir) {
-                    struct dirent *entry;
-                    struct dirent entry_buffer;
-                    int err;
+                    long name_max = pathconf(task->src_path, _PC_NAME_MAX);
+                    if (name_max == -1) {
+                        fprintf(stderr, "<ERROR>: pathconf() failed: %s\n", strerror(errno));
+                        closedir(dir);
+                        continue;
+                    }
 
-                    while ((err = readdir_r(dir, &entry_buffer, &entry)) == 0 && entry != NULL) {
+                    size_t entry_buffer_size = sizeof(struct dirent) + name_max + 1;
+                    struct dirent *entry_buffer = (struct dirent *)malloc(entry_buffer_size);
+                    if (entry_buffer == NULL) {
+                        fprintf(stderr, "<ERROR>: malloc() failed for entry_buffer\n");
+                        closedir(dir);
+                        pthread_mutex_unlock(&dir_lock);
+                        continue;
+                    }
+
+                    struct dirent *entry;
+                    while ((err = readdir_r(dir, entry_buffer, &entry)) == 0 && entry != NULL) {
                         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
                             continue;
                         }
@@ -154,7 +167,7 @@ void *copy_dir(void *arg) {
                     if (err != 0) {
                         fprintf(stderr, "<ERROR>: readdir_r() failed: %s\n", strerror(err));
                     }
-
+                    free(entry_buffer);
                     closedir(dir);
                 }
             } else if (S_ISREG(statbuf.st_mode)) {
@@ -212,6 +225,5 @@ int main(int argc, char *argv[]) {
             return -1;
         }
     }
-
     return EXIT_SUCCESS;
 }
