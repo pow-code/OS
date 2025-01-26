@@ -11,6 +11,11 @@
 
 #include "queue.h"
 
+const int PATH_MAXIMUM = 4096;
+const int CODE_FATAL = -1001;
+const int CODE_SUCCESS = 0;
+const int CODE_ERROR = 1;
+
 pthread_mutex_t dir_lock = PTHREAD_MUTEX_INITIALIZER;
 char first_dst_path[PATH_MAX];
 
