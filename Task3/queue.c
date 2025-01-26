@@ -9,7 +9,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-#include "queue.h"
+#define BUFFER_SIZE 4096
+#define PATH_MAX 4096
 
 typedef struct Task {
     char src_path[PATH_MAX];
@@ -85,6 +86,3 @@ Task *pop_task(TaskQueue *queue) {
 void free_task(Task *task) {
     free(task);
 }
-
-
-
