@@ -88,14 +88,8 @@ Task *pop_task(TaskQueue *queue, int NUM_THREADS) {
         queue->cnt_active_threads--;
 
         if (queue->cnt_active_threads == 0) {
-            err = pthread_cond_signal(&queue->cond_empty);
-            if (err != EXIT_SUCCESS) {
-                fprintf(stderr, "pthread_cond_signal failed: %s\n", strerror(err));
-            }
+            pthread_cond_signal(&queue->cond_empty);
             err = pthread_mutex_unlock(&queue->lock);
-            if (err != EXIT_SUCCESS) {
-                fprintf(stderr, "pthread_mutex_lock failed: %s\n", strerror(err));
-            }
             return NULL;
         }
         else {
@@ -104,7 +98,6 @@ Task *pop_task(TaskQueue *queue, int NUM_THREADS) {
               fprintf(stderr, "pthread_cond_wait failed: %s\n", strerror(err));
             }
         }
-
         queue->cnt_active_threads++;
     }
 
@@ -129,7 +122,3 @@ void destroy_task_queue(TaskQueue *queue) {
 void free_task(Task *task) {
     free(task);
 }
-
-
-
-
