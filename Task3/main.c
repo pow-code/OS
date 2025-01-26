@@ -133,7 +133,8 @@ void *copy_dir(void *arg) {
 
                 if (dir) {
                     long name_max = pathconf(task->src_path, _PC_NAME_MAX);
-                    if (name_max == -1) {
+                    long path_max = pathconf(task->src_path, _PC_PATH_MAX); 
+                    if (name_max == -1 || path_max == -1) {
                         fprintf(stderr, "<ERROR>: pathconf() failed: %s\n", strerror(errno));
                         closedir(dir);
                         continue;
@@ -154,16 +155,18 @@ void *copy_dir(void *arg) {
                             continue;
                         }
 
-                        char new_src_path[PATH_MAX];
-                        char new_dst_path[PATH_MAX];
-                        snprintf(new_src_path, PATH_MAX, "%s/%s", task->src_path, entry->d_name);
-                        snprintf(new_dst_path, PATH_MAX, "%s/%s", task->dst_path, entry->d_name);
+                        char *new_src_path = (char *)malloc(path_max);
+                        char *new_dst_path = (char *)malloc(path_max);
+                        snprintf(new_src_path, path_max, "%s/%s", task->src_path, entry->d_name);
+                        snprintf(new_dst_path, path_max, "%s/%s", task->dst_path, entry->d_name);
 
                         if (strcmp(first_dst_path, new_src_path) == 0) {
                             continue;
                         }
 
                         push_task(queue, new_src_path, new_dst_path);
+                        free(new_src_path);
+                        free(new_dst_path);
                     }
 
                     if (err != 0) {
