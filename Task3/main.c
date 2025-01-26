@@ -37,15 +37,6 @@ void file_close(void *fd) {
     }
 }
 
-void threads_cancel(pthread_t *tid) {
-    for (int i = 0; i < NUM_THREADS; i++) {
-        if (tid[i] != pthread_self()) {
-            pthread_cancel(tid[i]);
-            printf("!!!!!!!!!!!\n");
-        }
-    }
-}
-
 void *copy_file(const char *src_path, const char *dst_path) {
     int src_fd, dst_fd, err;
     char buffer[BUFFER_SIZE];
