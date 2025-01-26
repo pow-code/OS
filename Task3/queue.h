@@ -7,6 +7,9 @@
 // Размер буфера для копирования файлов
 #define BUFFER_SIZE 4096
 #define PATH_MAX 4096
+const int CODE_FATAL = -1001;
+const int CODE_SUCCESS = 0;
+const int CODE_ERROR = 1;
 
 // Структура задачи
 typedef struct Task {
