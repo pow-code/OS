@@ -8,16 +8,13 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
-
 #include "queue.h"
 
-const int PATH_MAXIMUM = 4096;
 const int CODE_FATAL = -1001;
 const int CODE_SUCCESS = 0;
 const int CODE_ERROR = 1;
 
 int NUM_THREADS;
-pthread_t threads[100];
 
 char first_dst_path[PATH_MAX];
 
@@ -104,7 +101,7 @@ void *copy_file(const char *src_path, const char *dst_path) {
 void *copy_dir(void *arg) {
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
     TaskQueue *queue = (TaskQueue *)arg;
     int err;
@@ -123,11 +120,6 @@ void *copy_dir(void *arg) {
             if (access(task->src_path, R_OK) != 0) {
                 fprintf(stderr, "can't access %s: %s\n",task->src_path, strerror(errno));
                 continue;
-            }
-
-
-            if (err != EXIT_SUCCESS) {
-                fprintf(stderr, "<ERROR>: pthread_mutex_lock() failed: %s\n", strerror(errno));
             }
 
             if (S_ISDIR(statbuf.st_mode)) {
@@ -162,8 +154,8 @@ void *copy_dir(void *arg) {
                             continue;
                         }
 
-                        char *new_src_path = (char *)malloc(path_max);
-                        char *new_dst_path = (char *)malloc(path_max); // малоки не нужны
+                        char new_src_path[path_max];
+                        char new_dst_path[path_max]; 
                         snprintf(new_src_path, path_max, "%s/%s", task->src_path, entry->d_name);
                         snprintf(new_dst_path, path_max, "%s/%s", task->dst_path, entry->d_name);
 
@@ -176,8 +168,6 @@ void *copy_dir(void *arg) {
                         }
 
                         push_task(queue, new_src_path, new_dst_path);
-                        free(new_src_path);
-                        free(new_dst_path);
                     }
 
                     if (err != 0) {
@@ -189,12 +179,10 @@ void *copy_dir(void *arg) {
             } else if (S_ISREG(statbuf.st_mode)) {
                 copy_file(task->src_path, task->dst_path);
             }
-            if (err != EXIT_SUCCESS) {
-                fprintf(stderr, "<ERROR>: pthread_mutex_unlock() failed: %s\n", strerror(errno));
-            }
         }
         free_task(task);
     }
+
     pthread_exit(NULL);
 }
 
@@ -204,10 +192,9 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <source_path> <destination_path> <count_threads>\n", argv[0]);
         return EXIT_FAILURE;
     }
-    
+
     const char *src_path = argv[1];
     const char *dst_path = argv[2];
-
 
     strncpy(first_dst_path, dst_path, strlen(dst_path));
 
@@ -225,7 +212,7 @@ int main(int argc, char *argv[]) {
 
     push_task(&queue, src_path, dst_path);
 
-
+    pthread_t threads[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++) {
         err = pthread_create(&threads[i], NULL, copy_dir, &queue);
         if (err != EXIT_SUCCESS) {
